@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == "customer";
+      allow update: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == resource.data.role;
+      allow delete: if isAdmin();
+    }
+
+    match /books/{bookId} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      allow create: if signedIn()
+        && request.resource.data.customerUid == request.auth.uid
+        && request.resource.data.status == "pending"
+        && request.resource.data.paymentStatus == "awaiting_payment"
+        && request.resource.data.bookPriceMzn is int
+        && request.resource.data.bookPriceMzn >= 0;
+      allow read: if signedIn()
+        && (resource.data.customerUid == request.auth.uid || isAdmin());
+      // Alterações administrativas sensíveis passam pelas Cloud Functions.
+      allow update, delete: if false;
+    }
+  }
+}

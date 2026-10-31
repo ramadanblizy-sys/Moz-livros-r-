@@ -26,3 +26,4 @@ jobs:
           git add -A
           git commit -m "Extrair projecto Flutter" || echo "Sem alterações"
           git push
+          # Workflow de extracção do projecto
